@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的导航</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>我的导航</h1>
+            <a href="/admin" class="admin-btn">管理面板</a>
+        </div>
+
+        <div id="navContent">
+            {% for category in categories %}
+            <div class="category-block">
+                <h2 class="category-title">{{ category.name }}</h2>
+                <div class="nav-grid">
+                    {% for link in links if link.category_id == category.id %}
+                    <a href="{{ link.url }}" class="nav-item" target="_blank">
+                        <span class="nav-name">{{ link.name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        // 每5秒自动刷新一次，实现实时加载
+        setInterval(() => {
+            fetch('/api/links')
+                .then(res => res.json())
+                .then(data => {
+                    const { links, categories } = data;
+                    const content = document.getElementById('navContent');
+
+                    content.innerHTML = categories.map(category => {
+                        const categoryLinks = links.filter(link => link.category_id === category.id);
+                        return `
+                            <div class="category-block">
+                                <h2 class="category-title">${category.name}</h2>
+                                <div class="nav-grid">
+                                    ${categoryLinks.map(link => `
+                                        <a href="${link.url}" class="nav-item" target="_blank">
+                                            <span class="nav-name">${link.name}</span>
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                })
+                .catch(err => console.error('加载失败:', err));
+        }, 5000);
+    </script>
+</body>
+</html>

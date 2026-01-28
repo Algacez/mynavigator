@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导航管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>导航管理</h1>
+        <a href="/" class="back-link">← 返回导航</a>
+
+        <div class="admin-panel">
+            <!-- 分类管理 -->
+            <div class="category-section">
+                <h2>分类管理</h2>
+                <div class="add-form">
+                    <form id="addCategoryForm">
+                        <input type="text" id="categoryNameInput" placeholder="新分类名称" required>
+                        <button type="submit">添加分类</button>
+                    </form>
+                </div>
+                <div class="categories-list" id="categoriesContainer">
+                    {% for category in categories %}
+                    <div class="category-item" data-id="{{ category.id }}">
+                        <span class="category-name">{{ category.name }}</span>
+                        <div class="category-actions">
+                            <button class="edit-btn" onclick="editCategory({{ category.id }}, '{{ category.name }}')">编辑</button>
+                            <button class="delete-btn" onclick="deleteCategory({{ category.id }})">删除</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 链接管理 -->
+            <div class="links-section">
+                <h2>链接管理</h2>
+                <div class="add-form">
+                    <form id="addForm">
+                        <input type="text" id="nameInput" placeholder="名称" required>
+                        <input type="text" id="urlInput" placeholder="IP端口/域名 (例如: http://192.168.1.1:8080)" required>
+                        <select id="categorySelect" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">添加</button>
+                    </form>
+                </div>
+
+                <div class="links-list">
+                    <div id="linksContainer">
+                        {% for link in links %}
+                        <div class="link-item" data-id="{{ link.id }}">
+                            <div class="link-info">
+                                <div class="link-name">{{ link.name }}</div>
+                                <div class="link-url">{{ link.url }}</div>
+                                <div class="link-category">
+                                    {% for category in categories if category.id == link.category_id %}{{ category.name }}{% endfor %}
+                                </div>
+                            </div>
+                            <div class="link-actions">
+                                <button class="edit-btn" onclick='editLink({{ link.id }}, "{{ link.name }}", "{{ link.url }}", {{ link.category_id }})'>编辑</button>
+                                <button class="delete-btn" onclick="deleteLink({{ link.id }})">删除</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取所有分类
+        async function loadCategories() {
+            const res = await fetch('/api/categories');
+            return await res.json();
+        }
+
+        // 更新分类选择框
+        async function refreshCategorySelect() {
+            const categories = await loadCategories();
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        }
+
+        // 添加分类
+        document.getElementById('addCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('categoryNameInput').value;
+
+            const res = await fetch('/api/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+
+            if (res.ok) {
+                document.getElementById('categoryNameInput').value = '';
+                location.reload();
+            } else {
+                alert('添加失败');
+            }
+        });
+
+        // 编辑分类
+        async function editCategory(id, name) {
+            const newName = prompt('新分类名称:', name);
+            if (newName === null) return;
+
+            const res = await fetch(`/api/categories/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('更新失败');
+            }
+        }
+
+        // 删除分类
+        async function deleteCategory(id) {
+            if (!confirm('确定要删除该分类吗? 该分类下的链接将移到其他分类。')) return;
+
+            const res = await fetch(`/api/categories/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('删除失败');
+            }
+        }
+
+        // 添加链接
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('nameInput').value;
+            const url = document.getElementById('urlInput').value;
+            const category_id = parseInt(document.getElementById('categorySelect').value);
+
+            const res = await fetch('/api/links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, url, category_id })
+            });
+
+            if (res.ok) {
+                document.getElementById('nameInput').value = '';
+                document.getElementById('urlInput').value = '';
+                location.reload();
+            } else {
+                alert('添加失败');
+            }
+        });
+
+        // 编辑链接
+        async function editLink(id, name, url, categoryId) {
+            const newName = prompt('新名称:', name);
+            if (newName === null) return;
+            const newUrl = prompt('新URL:', url);
+            if (newUrl === null) return;
+
+            const categories = await loadCategories();
+            const categoryOptions = categories.map(cat => `${cat.id}:${cat.name}`).join('\n');
+            const newCategoryId = prompt(`选择分类ID:\n${categoryOptions}`, categoryId);
+            if (newCategoryId === null) return;
+
+            const res = await fetch(`/api/links/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName, url: newUrl, category_id: parseInt(newCategoryId) })
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('更新失败');
+            }
+        }
+
+        // 删除链接
+        async function deleteLink(id) {
+            if (!confirm('确定要删除吗?')) return;
+
+            const res = await fetch(`/api/links/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('删除失败');
+            }
+        }
+    </script>
+</body>
+</html>

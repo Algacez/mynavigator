@@ -1,0 +1,16 @@
+{
+  "categories": [
+    {
+      "id": 1,
+      "name": "默认分类"
+    }
+  ],
+  "links": [
+    {
+      "id": 1,
+      "name": "示例网站",
+      "url": "http://example.com",
+      "category_id": 1
+    }
+  ]
+}

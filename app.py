@@ -24,21 +24,52 @@ def save_config(config):
 def index():
     """主导航页面"""
     config = load_config()
-    return render_template('index.html', links=config.get('links', []), categories=config.get('categories', []))
+    links = config.get('links', [])
+
+    # 为没有order字段的链接添加order字段
+    for i, link in enumerate(links):
+        if 'order' not in link:
+            link['order'] = i + 1
+
+    # 按order字段排序
+    links = sorted(links, key=lambda x: x.get('order', 0))
+
+    return render_template('index.html', links=links, categories=config.get('categories', []))
 
 
 @app.route('/admin')
 def admin():
     """管理页面"""
     config = load_config()
-    return render_template('admin.html', links=config.get('links', []), categories=config.get('categories', []))
+    links = config.get('links', [])
+
+    # 为没有order字段的链接添加order字段
+    for i, link in enumerate(links):
+        if 'order' not in link:
+            link['order'] = i + 1
+
+    # 按order字段排序
+    links = sorted(links, key=lambda x: x.get('order', 0))
+
+    return render_template('admin.html', links=links, categories=config.get('categories', []))
 
 
 @app.route('/api/links', methods=['GET'])
 def get_links():
-    """获取所有链接"""
+    """获取所有链接，按排序字段排序"""
     config = load_config()
-    return jsonify({'links': config.get('links', []), 'categories': config.get('categories', [])})
+    links = config.get('links', [])
+    categories = config.get('categories', [])
+
+    # 为没有order字段的链接添加order字段
+    for i, link in enumerate(links):
+        if 'order' not in link:
+            link['order'] = i + 1
+
+    # 按order字段排序
+    links = sorted(links, key=lambda x: x.get('order', 0))
+
+    return jsonify({'links': links, 'categories': categories})
 
 
 @app.route('/api/links', methods=['POST'])
@@ -56,11 +87,16 @@ def add_link():
     existing_ids = [link['id'] for link in config.get('links', [])]
     new_id = max(existing_ids) + 1 if existing_ids else 1
 
+    # 获取当前最大的order值
+    links = config.get('links', [])
+    max_order = max([link.get('order', 0) for link in links]) if links else 0
+
     new_link = {
         'id': new_id,
         'name': name,
         'url': url,
-        'category_id': category_id
+        'category_id': category_id,
+        'order': max_order + 1
     }
     config.setdefault('links', []).append(new_link)
     save_config(config)
@@ -100,6 +136,57 @@ def delete_link(link_id):
             return jsonify({'success': True})
 
     return jsonify({'error': '链接不存在'}), 404
+
+
+@app.route('/api/links/<int:link_id>/move', methods=['POST'])
+def move_link(link_id):
+    """移动链接顺序"""
+    data = request.json
+    direction = data.get('direction')  # 'up' or 'down'
+
+    if direction not in ['up', 'down']:
+        return jsonify({'error': '方向只能是up或down'}), 400
+
+    config = load_config()
+    links = config.get('links', [])
+
+    # 为没有order字段的链接添加order字段
+    for i, link in enumerate(links):
+        if 'order' not in link:
+            link['order'] = i + 1
+
+    # 按order排序
+    links = sorted(links, key=lambda x: x.get('order', 0))
+
+    # 找到当前链接的索引
+    current_index = None
+    for i, link in enumerate(links):
+        if link['id'] == link_id:
+            current_index = i
+            break
+
+    if current_index is None:
+        return jsonify({'error': '链接不存在'}), 404
+
+    # 计算目标索引
+    if direction == 'up':
+        if current_index == 0:
+            return jsonify({'error': '已经在最前面了'}), 400
+        target_index = current_index - 1
+    else:  # down
+        if current_index == len(links) - 1:
+            return jsonify({'error': '已经在最后面了'}), 400
+        target_index = current_index + 1
+
+    # 交换order值
+    current_order = links[current_index]['order']
+    target_order = links[target_index]['order']
+
+    links[current_index]['order'] = target_order
+    links[target_index]['order'] = current_order
+
+    save_config(config)
+    return jsonify({'success': True})
 
 
 @app.route('/api/categories', methods=['GET'])

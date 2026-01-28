@@ -10,7 +10,8 @@
       "id": 1,
       "name": "示例网站",
       "url": "http://example.com",
-      "category_id": 1
+      "category_id": 1,
+      "order": 1
     }
   ]
 }

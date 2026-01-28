@@ -19,7 +19,7 @@
                 <h2 class="category-title">{{ category.name }}</h2>
                 <div class="nav-grid">
                     {% for link in links if link.category_id == category.id %}
-                    <a href="{{ link.url }}" class="nav-item" target="_blank">
+                    <a href="{{ link.url }}" class="nav-item" target="_blank" data-order="{{ link.order or loop.index }}">
                         <span class="nav-name">{{ link.name }}</span>
                     </a>
                     {% endfor %}

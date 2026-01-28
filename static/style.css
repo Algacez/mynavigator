@@ -204,7 +204,7 @@ h1 {
     gap: 10px;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn, .delete-btn, .move-btn {
     padding: 8px 16px;
     border: none;
     border-radius: 6px;
@@ -212,6 +212,22 @@ h1 {
     font-size: 0.9em;
     font-weight: 500;
     transition: all 0.3s;
+}
+
+.move-btn {
+    padding: 8px 12px;
+    background: #2196F3;
+    color: white;
+    font-size: 1em;
+    min-width: 40px;
+}
+
+.up-btn:hover {
+    background: #1976D2;
+}
+
+.down-btn:hover {
+    background: #1976D2;
 }
 
 .edit-btn {

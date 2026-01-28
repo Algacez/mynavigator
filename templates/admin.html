@@ -53,7 +53,7 @@
                 <div class="links-list">
                     <div id="linksContainer">
                         {% for link in links %}
-                        <div class="link-item" data-id="{{ link.id }}">
+                        <div class="link-item" data-id="{{ link.id }}" data-order="{{ link.order or loop.index }}">
                             <div class="link-info">
                                 <div class="link-name">{{ link.name }}</div>
                                 <div class="link-url">{{ link.url }}</div>
@@ -62,6 +62,8 @@
                                 </div>
                             </div>
                             <div class="link-actions">
+                                <button class="move-btn up-btn" onclick="moveLink({{ link.id }}, 'up')" title="上移">↑</button>
+                                <button class="move-btn down-btn" onclick="moveLink({{ link.id }}, 'down')" title="下移">↓</button>
                                 <button class="edit-btn" onclick='editLink({{ link.id }}, "{{ link.name }}", "{{ link.url }}", {{ link.category_id }})'>编辑</button>
                                 <button class="delete-btn" onclick="deleteLink({{ link.id }})">删除</button>
                             </div>
@@ -198,6 +200,22 @@
                 location.reload();
             } else {
                 alert('删除失败');
+            }
+        }
+
+        // ��动链接顺序
+        async function moveLink(id, direction) {
+            const res = await fetch(`/api/links/${id}/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction })
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || '移动失��');
             }
         }
     </script>

@@ -294,6 +294,12 @@ h1 {
     margin-top: 3px;
 }
 
+.link-empty {
+    color: #999;
+    padding: 10px 0 0 5px;
+    font-size: 0.95em;
+}
+
 /* 链接区域 */
 .links-section {
     margin-top: 30px;

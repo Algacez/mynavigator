@@ -20,54 +20,96 @@ def save_config(config):
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
+def normalize_categories(config):
+    """确保分类有顺序并按顺序排序"""
+    categories = config.get('categories', [])
+    changed = False
+
+    for i, category in enumerate(categories):
+        if 'order' not in category:
+            category['order'] = i + 1
+            changed = True
+
+    categories.sort(key=lambda x: x.get('order', 0))
+
+    for i, category in enumerate(categories, start=1):
+        if category.get('order') != i:
+            category['order'] = i
+            changed = True
+
+    if changed:
+        save_config(config)
+
+    return categories
+
+
+def normalize_links(config):
+    """确保链接在各自分类内有顺序并排序"""
+    links = config.get('links', [])
+    changed = False
+
+    links_by_category = {}
+    for link in links:
+        links_by_category.setdefault(link.get('category_id', 1), []).append(link)
+
+    for category_id, category_links in links_by_category.items():
+        category_links.sort(key=lambda x: x.get('order', 0))
+        for i, link in enumerate(category_links, start=1):
+            if link.get('order') != i:
+                link['order'] = i
+                changed = True
+
+    if changed:
+        save_config(config)
+
+    return links
+
+
+def group_links_by_category(links):
+    links_by_category = {}
+    for link in links:
+        links_by_category.setdefault(link.get('category_id', 1), []).append(link)
+
+    for category_id, category_links in links_by_category.items():
+        category_links.sort(key=lambda x: x.get('order', 0))
+
+    return links_by_category
+
+
 @app.route('/')
 def index():
     """主导航页面"""
     config = load_config()
-    links = config.get('links', [])
+    categories = normalize_categories(config)
+    links = normalize_links(config)
+    links_by_category = group_links_by_category(links)
 
-    # 为没有order字段的链接添加order字段
-    for i, link in enumerate(links):
-        if 'order' not in link:
-            link['order'] = i + 1
-
-    # 按order字段排序
-    links = sorted(links, key=lambda x: x.get('order', 0))
-
-    return render_template('index.html', links=links, categories=config.get('categories', []))
+    return render_template('index.html', links_by_category=links_by_category, categories=categories)
 
 
 @app.route('/admin')
 def admin():
     """管理页面"""
     config = load_config()
-    links = config.get('links', [])
+    categories = normalize_categories(config)
+    links = normalize_links(config)
+    links_by_category = group_links_by_category(links)
 
-    # 为没有order字段的链接添加order字段
-    for i, link in enumerate(links):
-        if 'order' not in link:
-            link['order'] = i + 1
-
-    # 按order字段排序
-    links = sorted(links, key=lambda x: x.get('order', 0))
-
-    return render_template('admin.html', links=links, categories=config.get('categories', []))
+    return render_template('admin.html', links_by_category=links_by_category, categories=categories)
 
 
 @app.route('/api/links', methods=['GET'])
 def get_links():
     """获取所有链接，按排序字段排序"""
     config = load_config()
-    links = config.get('links', [])
-    categories = config.get('categories', [])
+    categories = normalize_categories(config)
+    links = normalize_links(config)
 
-    # 为没有order字段的链接添加order字段
-    for i, link in enumerate(links):
-        if 'order' not in link:
-            link['order'] = i + 1
-
-    # 按order字段排序
-    links = sorted(links, key=lambda x: x.get('order', 0))
+    category_order_map = {cat['id']: cat.get('order', 0) for cat in categories}
+    links = sorted(
+        links,
+        key=lambda x: (category_order_map.get(x.get('category_id', 1), 0), x.get('order', 0))
+    )
 
     return jsonify({'links': links, 'categories': categories})
 
@@ -84,12 +126,14 @@ def add_link():
         return jsonify({'error': '名称和URL不能为空'}), 400
 
     config = load_config()
+    normalize_categories(config)
     existing_ids = [link['id'] for link in config.get('links', [])]
     new_id = max(existing_ids) + 1 if existing_ids else 1
 
-    # 获取当前最大的order值
+    # 获取当前分类下最大的order值
     links = config.get('links', [])
-    max_order = max([link.get('order', 0) for link in links]) if links else 0
+    category_links = [link for link in links if link.get('category_id') == category_id]
+    max_order = max([link.get('order', 0) for link in category_links]) if category_links else 0
 
     new_link = {
         'id': new_id,
@@ -109,14 +153,24 @@ def update_link(link_id):
     """更新链接"""
     data = request.json
     config = load_config()
+    normalize_categories(config)
     links = config.get('links', [])
 
     for link in links:
         if link['id'] == link_id:
+            old_category_id = link.get('category_id')
             link['name'] = data.get('name', link['name']).strip()
             link['url'] = data.get('url', link['url']).strip()
             if 'category_id' in data:
                 link['category_id'] = data['category_id']
+
+            if 'category_id' in data and data['category_id'] != old_category_id:
+                new_category_id = data['category_id']
+                category_links = [l for l in links if l.get('category_id') == new_category_id]
+                max_order = max([l.get('order', 0) for l in category_links]) if category_links else 0
+                link['order'] = max_order + 1
+
+            normalize_links(config)
             save_config(config)
             return jsonify(link)
 
@@ -148,19 +202,20 @@ def move_link(link_id):
         return jsonify({'error': '方向只能是up或down'}), 400
 
     config = load_config()
-    links = config.get('links', [])
-
-    # 为没有order字段的链接添加order字段
-    for i, link in enumerate(links):
-        if 'order' not in link:
-            link['order'] = i + 1
-
-    # 按order排序
-    links = sorted(links, key=lambda x: x.get('order', 0))
+    normalize_categories(config)
+    links = normalize_links(config)
 
     # 找到当前链接的索引
+    current_link = next((link for link in links if link['id'] == link_id), None)
+    if current_link is None:
+        return jsonify({'error': '链接不存在'}), 404
+
+    category_id = current_link.get('category_id', 1)
+    category_links = [link for link in links if link.get('category_id') == category_id]
+    category_links.sort(key=lambda x: x.get('order', 0))
+
     current_index = None
-    for i, link in enumerate(links):
+    for i, link in enumerate(category_links):
         if link['id'] == link_id:
             current_index = i
             break
@@ -179,11 +234,11 @@ def move_link(link_id):
         target_index = current_index + 1
 
     # 交换order值
-    current_order = links[current_index]['order']
-    target_order = links[target_index]['order']
+    current_order = category_links[current_index]['order']
+    target_order = category_links[target_index]['order']
 
-    links[current_index]['order'] = target_order
-    links[target_index]['order'] = current_order
+    category_links[current_index]['order'] = target_order
+    category_links[target_index]['order'] = current_order
 
     save_config(config)
     return jsonify({'success': True})
@@ -193,7 +248,8 @@ def move_link(link_id):
 def get_categories():
     """获取所有分类"""
     config = load_config()
-    return jsonify(config.get('categories', []))
+    categories = normalize_categories(config)
+    return jsonify(categories)
 
 
 @app.route('/api/categories', methods=['POST'])
@@ -208,10 +264,12 @@ def add_category():
     config = load_config()
     existing_ids = [cat['id'] for cat in config.get('categories', [])]
     new_id = max(existing_ids) + 1 if existing_ids else 1
+    max_order = max([cat.get('order', 0) for cat in config.get('categories', [])]) if config.get('categories') else 0
 
     new_category = {
         'id': new_id,
-        'name': name
+        'name': name,
+        'order': max_order + 1
     }
     config.setdefault('categories', []).append(new_category)
     save_config(config)
@@ -224,6 +282,7 @@ def update_category(category_id):
     """更新分类"""
     data = request.json
     config = load_config()
+    normalize_categories(config)
     categories = config.get('categories', [])
 
     for category in categories:
@@ -248,10 +307,52 @@ def delete_category(category_id):
             for link in config.get('links', []):
                 if link.get('category_id') == category_id:
                     link['category_id'] = categories[0]['id'] if categories else 1
+            normalize_categories(config)
+            normalize_links(config)
             save_config(config)
             return jsonify({'success': True})
 
     return jsonify({'error': '分类不存在'}), 404
+
+
+@app.route('/api/categories/<int:category_id>/move', methods=['POST'])
+def move_category(category_id):
+    """移动分类顺序"""
+    data = request.json
+    direction = data.get('direction')  # 'up' or 'down'
+
+    if direction not in ['up', 'down']:
+        return jsonify({'error': '方向只能是up或down'}), 400
+
+    config = load_config()
+    categories = normalize_categories(config)
+
+    current_index = None
+    for i, category in enumerate(categories):
+        if category['id'] == category_id:
+            current_index = i
+            break
+
+    if current_index is None:
+        return jsonify({'error': '分类不存在'}), 404
+
+    if direction == 'up':
+        if current_index == 0:
+            return jsonify({'error': '已经在最前面了'}), 400
+        target_index = current_index - 1
+    else:  # down
+        if current_index == len(categories) - 1:
+            return jsonify({'error': '已经在最后面了'}), 400
+        target_index = current_index + 1
+
+    current_order = categories[current_index]['order']
+    target_order = categories[target_index]['order']
+
+    categories[current_index]['order'] = target_order
+    categories[target_index]['order'] = current_order
+
+    save_config(config)
+    return jsonify({'success': True})
 
 
 if __name__ == '__main__':

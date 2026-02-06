@@ -2,7 +2,8 @@
   "categories": [
     {
       "id": 1,
-      "name": "默认分类"
+      "name": "默认分类",
+      "order": 1
     }
   ],
   "links": [

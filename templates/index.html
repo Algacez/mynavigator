@@ -18,7 +18,7 @@
             <div class="category-block">
                 <h2 class="category-title">{{ category.name }}</h2>
                 <div class="nav-grid">
-                    {% for link in links if link.category_id == category.id %}
+                    {% for link in links_by_category.get(category.id, []) %}
                     <a href="{{ link.url }}" class="nav-item" target="_blank" data-order="{{ link.order or loop.index }}">
                         <span class="nav-name">{{ link.name }}</span>
                     </a>
@@ -37,9 +37,12 @@
                 .then(data => {
                     const { links, categories } = data;
                     const content = document.getElementById('navContent');
+                    const sortedCategories = [...categories].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-                    content.innerHTML = categories.map(category => {
-                        const categoryLinks = links.filter(link => link.category_id === category.id);
+                    content.innerHTML = sortedCategories.map(category => {
+                        const categoryLinks = links
+                            .filter(link => link.category_id === category.id)
+                            .sort((a, b) => (a.order || 0) - (b.order || 0));
                         return `
                             <div class="category-block">
                                 <h2 class="category-title">${category.name}</h2>

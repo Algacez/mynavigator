@@ -26,6 +26,8 @@
                     <div class="category-item" data-id="{{ category.id }}">
                         <span class="category-name">{{ category.name }}</span>
                         <div class="category-actions">
+                            <button class="move-btn up-btn" onclick="moveCategory({{ category.id }}, 'up')" title="上移">↑</button>
+                            <button class="move-btn down-btn" onclick="moveCategory({{ category.id }}, 'down')" title="下移">↓</button>
                             <button class="edit-btn" onclick="editCategory({{ category.id }}, '{{ category.name }}')">编辑</button>
                             <button class="delete-btn" onclick="deleteCategory({{ category.id }})">删除</button>
                         </div>
@@ -52,21 +54,28 @@
 
                 <div class="links-list">
                     <div id="linksContainer">
-                        {% for link in links %}
-                        <div class="link-item" data-id="{{ link.id }}" data-order="{{ link.order or loop.index }}">
-                            <div class="link-info">
-                                <div class="link-name">{{ link.name }}</div>
-                                <div class="link-url">{{ link.url }}</div>
-                                <div class="link-category">
-                                    {% for category in categories if category.id == link.category_id %}{{ category.name }}{% endfor %}
+                        {% for category in categories %}
+                        <div class="category-block">
+                            <h3 class="category-title">{{ category.name }}</h3>
+                            {% set category_links = links_by_category.get(category.id, []) %}
+                            {% if category_links %}
+                                {% for link in category_links %}
+                                <div class="link-item" data-id="{{ link.id }}" data-order="{{ link.order or loop.index }}">
+                                    <div class="link-info">
+                                        <div class="link-name">{{ link.name }}</div>
+                                        <div class="link-url">{{ link.url }}</div>
+                                    </div>
+                                    <div class="link-actions">
+                                        <button class="move-btn up-btn" onclick="moveLink({{ link.id }}, 'up')" title="上移">↑</button>
+                                        <button class="move-btn down-btn" onclick="moveLink({{ link.id }}, 'down')" title="下移">↓</button>
+                                        <button class="edit-btn" onclick='editLink({{ link.id }}, "{{ link.name }}", "{{ link.url }}", {{ link.category_id }})'>编辑</button>
+                                        <button class="delete-btn" onclick="deleteLink({{ link.id }})">删除</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="link-actions">
-                                <button class="move-btn up-btn" onclick="moveLink({{ link.id }}, 'up')" title="上移">↑</button>
-                                <button class="move-btn down-btn" onclick="moveLink({{ link.id }}, 'down')" title="下移">↓</button>
-                                <button class="edit-btn" onclick='editLink({{ link.id }}, "{{ link.name }}", "{{ link.url }}", {{ link.category_id }})'>编辑</button>
-                                <button class="delete-btn" onclick="deleteLink({{ link.id }})">删除</button>
-                            </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="link-empty">暂无链接</div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -141,6 +150,22 @@
             }
         }
 
+        // 移动分类顺序
+        async function moveCategory(id, direction) {
+            const res = await fetch(`/api/categories/${id}/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction })
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || '移动失败');
+            }
+        }
+
         // 添加链接
         document.getElementById('addForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -203,7 +228,7 @@
             }
         }
 
-        // ��动链接顺序
+        // 移动链接顺序
         async function moveLink(id, direction) {
             const res = await fetch(`/api/links/${id}/move`, {
                 method: 'POST',
@@ -215,7 +240,7 @@
                 location.reload();
             } else {
                 const data = await res.json();
-                alert(data.error || '移动失��');
+                alert(data.error || '移动失败');
             }
         }
     </script>

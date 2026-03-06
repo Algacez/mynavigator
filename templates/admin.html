@@ -29,6 +29,7 @@
                             <button class="move-btn up-btn" onclick="moveCategory({{ category.id }}, 'up')" title="上移">↑</button>
                             <button class="move-btn down-btn" onclick="moveCategory({{ category.id }}, 'down')" title="下移">↓</button>
                             <button class="edit-btn" onclick="editCategory({{ category.id }}, '{{ category.name }}')">编辑</button>
+                            <button class="batch-ip-btn" onclick="batchUpdateIp({{ category.id }}, '{{ category.name }}')">批量改 IP</button>
                             <button class="delete-btn" onclick="deleteCategory({{ category.id }})">删除</button>
                         </div>
                     </div>
@@ -42,7 +43,7 @@
                 <div class="add-form">
                     <form id="addForm">
                         <input type="text" id="nameInput" placeholder="名称" required>
-                        <input type="text" id="urlInput" placeholder="IP端口/域名 (例如: http://192.168.1.1:8080)" required>
+                        <input type="text" id="urlInput" placeholder="IP 端口/域名 (例如：http://192.168.1.1:8080)" required>
                         <select id="categorySelect" required>
                             {% for category in categories %}
                             <option value="{{ category.id }}">{{ category.name }}</option>
@@ -137,7 +138,7 @@
 
         // 删除分类
         async function deleteCategory(id) {
-            if (!confirm('确定要删除该分类吗? 该分类下的链接将移到其他分类。')) return;
+            if (!confirm('确定要删除该分类吗？该分类下的链接将移到其他分类。')) return;
 
             const res = await fetch(`/api/categories/${id}`, {
                 method: 'DELETE'
@@ -188,34 +189,123 @@
             }
         });
 
-        // 编辑链接
+        // 编辑链接 - 分别编辑名称、URL、分类
         async function editLink(id, name, url, categoryId) {
-            const newName = prompt('新名称:', name);
-            if (newName === null) return;
-            const newUrl = prompt('新URL:', url);
-            if (newUrl === null) return;
-
             const categories = await loadCategories();
-            const categoryOptions = categories.map(cat => `${cat.id}:${cat.name}`).join('\n');
-            const newCategoryId = prompt(`选择分类ID:\n${categoryOptions}`, categoryId);
-            if (newCategoryId === null) return;
+            
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3>编辑链接</h3>
+                    <div class="modal-form">
+                        <label>
+                            <span>名称:</span>
+                            <input type="text" id="editLinkName" value="${name}" />
+                        </label>
+                        <label>
+                            <span>URL:</span>
+                            <input type="text" id="editLinkUrl" value="${url}" />
+                        </label>
+                        <label>
+                            <span>分类:</span>
+                            <select id="editLinkCategory">
+                                ${categories.map(cat => `<option value="${cat.id}" ${cat.id === categoryId ? 'selected' : ''}>${cat.name}</option>`).join('')}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="edit-single-btn" data-field="name">只改名称</button>
+                        <button class="edit-single-btn" data-field="url">只改 URL</button>
+                        <button class="edit-single-btn" data-field="category">只改分类</button>
+                        <button class="save-all-btn">保存全部</button>
+                        <button class="cancel-btn">取消</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
 
-            const res = await fetch(`/api/links/${id}`, {
-                method: 'PUT',
+            // 只改单字段
+            modal.querySelectorAll('.edit-single-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const field = btn.dataset.field;
+                    let updateData = {};
+                    
+                    if (field === 'name') {
+                        const newName = document.getElementById('editLinkName').value;
+                        updateData = { name: newName };
+                    } else if (field === 'url') {
+                        const newUrl = document.getElementById('editLinkUrl').value;
+                        updateData = { url: newUrl };
+                    } else if (field === 'category') {
+                        const newCategoryId = parseInt(document.getElementById('editLinkCategory').value);
+                        updateData = { category_id: newCategoryId };
+                    }
+                    
+                    const res = await fetch(`/api/links/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('更新失败');
+                    }
+                });
+            });
+
+            // 保存全部
+            modal.querySelector('.save-all-btn').addEventListener('click', async () => {
+                const newName = document.getElementById('editLinkName').value;
+                const newUrl = document.getElementById('editLinkUrl').value;
+                const newCategoryId = parseInt(document.getElementById('editLinkCategory').value);
+
+                const res = await fetch(`/api/links/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, url: newUrl, category_id: newCategoryId })
+                });
+
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    alert('更新失败');
+                }
+            });
+
+            // 取消
+            modal.querySelector('.cancel-btn').addEventListener('click', () => {
+                modal.remove();
+            });
+        }
+
+        // 批量更新 IP
+        async function batchUpdateIp(categoryId, categoryName) {
+            const newIp = prompt(`批量更新分类 "${categoryName}" 下所有链接的 IP 地址\n请输入新 IP (例如：192.168.1.100):`);
+            if (!newIp) return;
+
+            const res = await fetch(`/api/categories/${categoryId}/batch-update-ip`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName, url: newUrl, category_id: parseInt(newCategoryId) })
+                body: JSON.stringify({ ip: newIp })
             });
 
             if (res.ok) {
+                const data = await res.json();
+                alert(`成功更新 ${data.updated_count} 个链接的 IP 地址`);
                 location.reload();
             } else {
-                alert('更新失败');
+                const data = await res.json();
+                alert(data.error || '更新失败');
             }
         }
 
         // 删除链接
         async function deleteLink(id) {
-            if (!confirm('确定要删除吗?')) return;
+            if (!confirm('确定要删除吗？')) return;
 
             const res = await fetch(`/api/links/${id}`, {
                 method: 'DELETE'

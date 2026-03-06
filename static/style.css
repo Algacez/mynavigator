@@ -6,7 +6,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #87CEEB 0%, #4A90E2 100%);
     min-height: 100vh;
     padding: 20px;
 }
@@ -33,7 +33,7 @@ h1 {
 .admin-btn {
     padding: 12px 24px;
     background: white;
-    color: #667eea;
+    color: #4A90E2;
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
@@ -72,7 +72,7 @@ h1 {
 }
 
 .category-title {
-    color: #667eea;
+    color: #4A90E2;
     margin-bottom: 20px;
     padding-bottom: 10px;
     border-bottom: 2px solid #e0e0e0;
@@ -106,7 +106,7 @@ h1 {
 }
 
 .nav-name {
-    color: #667eea;
+    color: #4A90E2;
     font-size: 1.2em;
     font-weight: 600;
 }
@@ -148,12 +148,12 @@ h1 {
 
 .add-form input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #4A90E2;
 }
 
 .add-form button {
     padding: 12px 30px;
-    background: #667eea;
+    background: #4A90E2;
     color: white;
     border: none;
     border-radius: 8px;
@@ -164,7 +164,7 @@ h1 {
 }
 
 .add-form button:hover {
-    background: #5568d3;
+    background: #3A7BD5;
 }
 
 /* 链接列表 */
@@ -216,18 +216,18 @@ h1 {
 
 .move-btn {
     padding: 8px 12px;
-    background: #2196F3;
+    background: #4A90E2;
     color: white;
     font-size: 1em;
     min-width: 40px;
 }
 
 .up-btn:hover {
-    background: #1976D2;
+    background: #3A7BD5;
 }
 
 .down-btn:hover {
-    background: #1976D2;
+    background: #3A7BD5;
 }
 
 .edit-btn {
@@ -246,6 +246,23 @@ h1 {
 
 .delete-btn:hover {
     background: #da190b;
+}
+
+/* 批量改 IP 按钮 */
+.batch-ip-btn {
+    background: #FF9800;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.batch-ip-btn:hover {
+    background: #F57C00;
 }
 
 /* 分类管理 */
@@ -282,7 +299,8 @@ h1 {
 }
 
 .category-actions .edit-btn,
-.category-actions .delete-btn {
+.category-actions .delete-btn,
+.category-actions .batch-ip-btn {
     padding: 5px 10px;
     font-size: 0.85em;
 }
@@ -320,7 +338,112 @@ h1 {
 
 .add-form select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #4A90E2;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    min-width: 400px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.modal-form label span {
+    color: #555;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.modal-form input,
+.modal-form select {
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+.modal-form input:focus,
+.modal-form select:focus {
+    outline: none;
+    border-color: #4A90E2;
+}
+
+.modal-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.edit-single-btn {
+    background: #4A90E2;
+    color: white;
+}
+
+.edit-single-btn:hover {
+    background: #3A7BD5;
+}
+
+.save-all-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+.save-all-btn:hover {
+    background: #45a049;
+}
+
+.cancel-btn {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.cancel-btn:hover {
+    background: #d0d0d0;
 }
 
 /* 响应式 */
@@ -339,5 +462,19 @@ h1 {
     .link-actions {
         width: 100%;
         justify-content: flex-end;
+    }
+
+    .modal-content {
+        min-width: auto;
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+    }
+
+    .modal-buttons button {
+        width: 100%;
     }
 }

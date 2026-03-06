@@ -355,5 +355,48 @@ def move_category(category_id):
     return jsonify({'success': True})
 
 
+@app.route('/api/categories/<int:category_id>/batch-update-ip', methods=['POST'])
+def batch_update_ip(category_id):
+    """批量更新分类下所有链接的 IP 地址"""
+    data = request.json
+    new_ip = data.get('ip', '').strip()
+
+    if not new_ip:
+        return jsonify({'error': 'IP 地址不能为空'}), 400
+
+    config = load_config()
+    normalize_categories(config)
+    links = config.get('links', [])
+    updated_count = 0
+
+    import re
+    ip_pattern = re.compile(r'^(https?://)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(/.*)?$')
+
+    for link in links:
+        if link.get('category_id') == category_id:
+            url = link.get('url', '')
+            match = ip_pattern.match(url)
+            if match:
+                protocol = match.group(1) or 'http://'
+                port_and_path = match.group(4) or ''
+                port_match = re.search(r':(\d+)', url)
+                port_str = ''
+                path_str = ''
+                if port_match:
+                    port_str = ':' + port_match.group(1)
+                path_match = re.search(r':\d+(/.*)$', url)
+                if path_match:
+                    path_str = path_match.group(1)
+                elif not port_match and '/' in url.split('://')[-1]:
+                    path_str = '/' + url.split('://')[-1].split('/', 1)[1] if '://' in url else '/' + url.split('/', 1)[1]
+                
+                new_url = f"{protocol}{new_ip}{port_str}{path_str}"
+                link['url'] = new_url
+                updated_count += 1
+
+    save_config(config)
+    return jsonify({'success': True, 'updated_count': updated_count})
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002)
